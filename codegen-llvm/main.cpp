@@ -1,11 +1,62 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include "common.h"
+#include "llvm/Support/JSON.h"
 
 using namespace std;
 
-int main(void) {
+int main(int argc, char** argv) {
+
+  // sanity check
+  if (argc < 3) {
+    cout << "Usage: ./bril_llvm <input_file> <output_file>" << endl;
+    return 1;
+  }
+
+  // read in the file
+  ifstream json_file;
+  string json_str;
+  stringstream json_stream;
+  json_file.open(string(argv[1]), ios::in);
+  if (json_file.is_open()) {
+    json_stream << json_file.rdbuf();
+    json_str = json_stream.str();
+  }
+  else {
+    cout << "Input JSON file " << string(argv[1]) << " does not exist!" << endl;
+    return 2;
+  }
 
   // parse the jason file
+  auto json_val = llvm::json::parse(json_str);
+  if (auto err = json_val.takeError()) {
+    cout << "JSON parsing error!" << endl;
+    return 3;
+  }
+
+  // try to parse the llvm::json::Value
+  // a simple example to retrieve the "name" field
+  if (llvm::json::Object* O = json_val->getAsObject()) {
+    // the whole program should be a json object (in { } )
+    if (llvm::json::Array* fa = O->getArray("functions")) {
+      // the object should have one key called functions
+      // this key should map to a json array containing all functions (in [ ] )
+      // currently we only have one function
+      for (int i = 0; i < fa->size(); i ++ ) {
+        // each element in the array is an object containing two keys
+        if (auto fao = (*fa)[i].getAsObject()) {
+          if (auto a = fao->getString("name")) {
+            cout << a.getValue().str() << endl;
+          }
+        }
+      }
+    }
+  }
+
+
+      
 
   // create an LLVM context
   std::shared_ptr<llvm::LLVMContext> ctx_ = std::make_shared<llvm::LLVMContext>();
@@ -33,7 +84,7 @@ int main(void) {
   builder_->CreateRet(llvm::ConstantInt::getSigned(t_int_, 0));
 
   std::error_code ecode;
-  llvm::raw_fd_ostream dest("test.ll", ecode, llvm::sys::fs::F_None);
+  llvm::raw_fd_ostream dest(string(argv[2]), ecode, llvm::sys::fs::F_None);
   module->print(dest, nullptr);
 
   // execute the function
