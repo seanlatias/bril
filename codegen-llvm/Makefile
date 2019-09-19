@@ -10,3 +10,4 @@ all:
 
 clean:
 	rm bril-llvm
+	rm test.ll
