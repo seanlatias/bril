@@ -22,6 +22,8 @@ int main(void) {
   // usefule types
   llvm::Type* t_void_ = llvm::Type::getVoidTy(*ctx_);
   llvm::Type* t_int_ = llvm::Type::getInt32Ty(*ctx_);
+  llvm::Type* t_char_ = llvm::Type::getInt8Ty(*ctx_);
+  llvm::Type* t_char_p_ = llvm::Type::getInt8Ty(*ctx_)->getPointerTo();
   // first, create a main function
   std::vector<llvm::Type*> arg_types;
   llvm::FunctionType* ftype = llvm::FunctionType::get(t_int_, arg_types, false);
@@ -29,6 +31,16 @@ int main(void) {
   // start the fist BB
   llvm::BasicBlock* entry = llvm::BasicBlock::Create(*ctx_, "entry", function_);
   builder_->SetInsertPoint(entry);
+  // print a number
+  std::vector<llvm::Type*> call_types;
+  call_types.push_back(t_char_p_);
+  call_types.push_back(t_int_);
+  llvm::FunctionType* call_ftype = llvm::FunctionType::get(t_int_, call_types, false);
+  llvm::Function* printf_call = llvm::cast<llvm::Function>(module->getOrInsertFunction("printf", call_ftype));
+  std::vector<llvm::Value*> args;
+  args.push_back(builder_->CreateGlobalStringPtr("Hi, I am %d.\n"));
+  args.push_back(llvm::ConstantInt::getSigned(t_int_, 10));
+  builder_->CreateCall(printf_call, args);
   // return 0 for the main function
   builder_->CreateRet(llvm::ConstantInt::getSigned(t_int_, 0));
 
@@ -48,7 +60,6 @@ int main(void) {
   builder.setEngineKind(llvm::EngineKind::JIT);
   llvm::ExecutionEngine* ee = builder.create();
   // run the main function
-  cout << ee->getFunctionAddress("my_main") << endl;
   func_t func = (func_t)(ee->getFunctionAddress("my_main"));
   (*func)();
   delete ee;
