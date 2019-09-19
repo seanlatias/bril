@@ -36,3 +36,4 @@
 
 #include <llvm/Linker/Linker.h>
 
+typedef int (*func_t)();
