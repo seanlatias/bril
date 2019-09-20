@@ -2,10 +2,153 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <map>
+#include <utility>
+#include <assert>
 #include "common.h"
 #include "llvm/Support/JSON.h"
 
 using namespace std;
+using IRBuilder = llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter>;
+
+using BasicBlockFlag_T = pair<llvm::Basicblock*, bool> ;
+using BasicBlockMap_T = map<string, BasicBlockFlag_T>;
+
+// create an instruction from the json object, place it into a basic block using IRBuilder
+void createInst(
+  IRBuilder* builder,
+  llvm::json::Object* obj,
+  BasicBlockMap_T* bbMap) {
+
+  auto json_op = obj->getString("op");
+  assert(json_op && "Instruction missing field op!\n");
+
+  string op = json_op.getValue().str();
+
+  if (op == "const") {
+  }
+  else if (op == "add") {
+  }
+  else if (op == "mul") {
+  }
+  else if (op == "sub") {
+  }
+  else if (op == "div") {
+  }
+  else if (op == "eq") {
+  }
+  else if (op == "lt") {
+  }
+  else if (op == "gt") {
+  }
+  else if (op == "not") {
+  }
+  else if (op == "and") {
+  }
+  else if (op == "or") {
+  }
+  else if (op == "jmp") {
+  }
+  else if (op == "br") {
+  }
+  else if (op == "ret") {
+  }
+  else if (op == "id") {
+  }
+  else if (op == "print") {
+  }
+  // do nothing for nop
+  else if (op == "nop") ; 
+  else 
+    assert(false && "Operation not supported!\n");
+
+}
+
+
+// create a function from the json value v, place it in the module m, return its pointer
+llvm::Function* createFunction(
+  llvm::json::Value& v, 
+  IRBuilder* builder, 
+  llvm::LLVMContext* ctx,
+  llvm::Module* m) {
+
+  // some useful types
+  llvm::Type* t_void_ = llvm::Type::getVoidTy(*ctx);
+  llvm::Type* t_int_ = llvm::Type::getInt32Ty(*ctx);
+  llvm::Type* t_char_ = llvm::Type::getInt8Ty(*ctx);
+  llvm::Type* t_char_p_ = llvm::Type::getInt8Ty(*ctx)->getPointerTo();
+
+  // maintain a map of basic blocks, each block has a flag indicating whether it is used or not
+  BasicBlockMap_T bbMap;
+  bbMap.clear();
+
+  // convert the value to an object
+  auto json_func = v.getAsObject();
+  assert(json_func && "Failed to get object of function!\n");
+
+  auto json_fname = json_func->getString("name");
+  assert(json_name && "The JSON object of the function is incomplete: missing name.\n");
+
+  // get the name
+  string fname = json_fname.getValue().str();
+
+  // create the function
+  std::vector<llvm::Type*> arg_types;
+  llvm::FunctionType* ftype = llvm::FunctionType::get(t_int_, arg_types, false);
+  llvm::Function* f = llvm::Function::Create(ftype, llvm::Function::ExternalLinkage, fname, m);
+
+  // get all the instructions
+  auto json_insts = json_func->getArray("instrs");
+  assert(json_insts && "The JSON object of the function is incomplete: missing instrs.\n");
+
+  // first iterate through all instructions, get all labels
+  // notice that in Bril we can only jump to labels
+  // so this is sufficient for tracking all branch and jump instructions
+  for (auto inst = json_insts.begin(), inst_end = json_insts.end(); inst != inst_end; inst ++ ) {
+    auto obj = inst->getAsObject();
+    // special case for the first BB: if the function starts with a label, then name the 
+    // BB with this label; otherwise name it "entry"
+    if (auto json_bb_name = obj->getString("label")) {
+      string bb_name = json_bb_name.getValue().str();
+      llvm::BasicBlock* bb = llvm::BasicBlock::Create(*ctx, bb_name, f);
+      // track the basic block, not used yet
+      bbMap[bb_name] = BasicBlockFlag_T(bb, false);
+    }
+    else if (inst == json_insts.begin()){
+      // right now we use this special string to indicate that this is the entry block
+      llvm::BasicBlock* bb = llvm::BasicBlock::Create(*ctx, "", f);
+      // track the basic block, not used yet
+      bbMap[bb_name] = BasicBlockFlag_T(bb, false);
+    }
+  }
+
+  // do it again, this time we try to insert instructions into the basic blocks
+  for (auto inst = json_insts.begin(), inst_end = json_insts.end(); inst != inst_end; inst ++ ) {
+    auto obj = inst->getAsObject();
+    if (auto json_bb_name = obj->getString("label")) {
+      // find the basic block
+      string bb_name = json_bb_name.getValue().str();
+      assert((bbMap.count(bb_name) > 0) && "Key is not found in basic block map!\n";
+      llvm::BasicBlock* curr_bb = bbMap[bb_name].first;
+      // set IRBuilder to insert stuff into this block
+      builder->SetInsertPoint(curr_bb);
+      // notice that this block may not be used yet!
+    }
+    else if (inst == json_insts.begin()){
+      // in this case the block is the entry block
+      llvm::BasicBlock* curr_bb = bbMap[""].first;
+      // it has to be used, since we will process the first instruction immediately
+      bbMap[""].second = true;
+      builder->SetInsertPoint(curr_bb);
+      // process the first instruction
+      createInst(builder, inst, &bbMap);
+    }
+    else 
+      createInst(builder, inst, &bbMap);
+  }
+
+  return f;
+}
 
 int main(int argc, char** argv) {
 
@@ -36,6 +179,16 @@ int main(int argc, char** argv) {
     return 3;
   }
 
+  // create an LLVM context
+  std::shared_ptr<llvm::LLVMContext> ctx_ = std::make_shared<llvm::LLVMContext>();
+  // create an LLVM IRBuilder
+  std::unique_ptr<IRBuilder> builder_;
+  builder_.reset(new IRBuilder(*ctx_));
+  // create an LLVM module
+  std::unique_ptr<llvm::Module> module_;
+  module_.reset(new llvm::Module("bril_llvm", *ctx_));
+  llvm::Module* module = module_.get();
+
   // try to parse the llvm::json::Value
   // a simple example to retrieve the "name" field
   if (llvm::json::Object* O = json_val->getAsObject()) {
@@ -45,29 +198,14 @@ int main(int argc, char** argv) {
       // this key should map to a json array containing all functions (in [ ] )
       // currently we only have one function
       for (int i = 0; i < fa->size(); i ++ ) {
-        // each element in the array is an object containing two keys
-        if (auto fao = (*fa)[i].getAsObject()) {
-          if (auto a = fao->getString("name")) {
-            cout << a.getValue().str() << endl;
-          }
+        llvm::Function* f = createFunction((*fa)[i], builder_, ctx, module);
+        if (!f) {
+          cout << "Create function failed. " << endl;
+          return 5;
         }
       }
     }
   }
-
-
-      
-
-  // create an LLVM context
-  std::shared_ptr<llvm::LLVMContext> ctx_ = std::make_shared<llvm::LLVMContext>();
-  // create an LLVM IRBuilder
-  using IRBuilder = llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter>;
-  std::unique_ptr<IRBuilder> builder_;
-  builder_.reset(new IRBuilder(*ctx_));
-  // create an LLVM module
-  std::unique_ptr<llvm::Module> module_;
-  module_.reset(new llvm::Module("bril_llvm", *ctx_));
-  llvm::Module* module = module_.get();
 
   // use IRBuilder to build LLVM runtime
   // usefule types
