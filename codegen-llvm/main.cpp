@@ -220,6 +220,13 @@ int main(int argc, char** argv) {
   // start the fist BB
   llvm::BasicBlock* entry = llvm::BasicBlock::Create(*ctx_, "entry", function_);
   builder_->SetInsertPoint(entry);
+  // allocate a variable
+  llvm::Value* ptr_ = builder_->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+  // store a number to a variable
+  llvm::Value* ptr = builder_->CreateInBoundsGEP(ptr_, llvm::ConstantInt::getSigned(t_int_, 0));
+  builder_->CreateStore(llvm::ConstantInt::getSigned(t_int_, 10), ptr);
+  // load a number
+  llvm::Value* number = builder_->CreateLoad(ptr);
   // print a number
   std::vector<llvm::Type*> call_types;
   call_types.push_back(t_char_p_);
@@ -228,7 +235,7 @@ int main(int argc, char** argv) {
   llvm::Function* printf_call = llvm::cast<llvm::Function>(module->getOrInsertFunction("printf", call_ftype));
   std::vector<llvm::Value*> args;
   args.push_back(builder_->CreateGlobalStringPtr("Hi, I am %d.\n"));
-  args.push_back(llvm::ConstantInt::getSigned(t_int_, 10));
+  args.push_back(number);
   builder_->CreateCall(printf_call, args);
   // return 0 for the main function
   builder_->CreateRet(llvm::ConstantInt::getSigned(t_int_, 0));
