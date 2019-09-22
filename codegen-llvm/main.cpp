@@ -499,7 +499,6 @@ int main(int argc, char** argv) {
     }
   }
 
-  // dump the code to a text file
   std::error_code ecode;
   llvm::raw_fd_ostream dest(string(argv[2]), ecode, llvm::sys::fs::F_None);
   module->print(dest, nullptr);
