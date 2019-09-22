@@ -31,7 +31,7 @@ void createInst(
   // (there is an example in createFunction() )
   // here we check the terminating instruction of the block
   // if it exists, then we don't insert instruction into this block any more
-  llvm:::BasicBlock* bb = builder->GetInsertBlock();
+  llvm::BasicBlock* bb = builder->GetInsertBlock();
   llvm::LLVMContext* ctx = &(builder->getContext());
   llvm::Module* module = bb->getModule();
   if (llvm::Instruction* term_inst = bb->getTerminator())
@@ -46,13 +46,13 @@ void createInst(
   auto json_type = obj->getString("type");
   auto json_args = obj->getArray("args");
   // put the arguments into the vectors
-  VarList_T vars;
-  vars.clear();
+  VarList_T args;
+  args.clear();
   if (json_args) {
     for (auto ai = json_args->begin(), ae = json_args->end(); ai != ae; ai ++ ) {
       if (auto json_str = ai->getAsString()) {
         string arg_str = json_str.getValue().str();
-        vars.push_back(arg_str);
+        args.push_back(arg_str);
       }
       else 
         assert(false && "Reading argument error!\n");
@@ -72,6 +72,8 @@ void createInst(
   // this is similar with what clang does when not running any optimization
   // the mapping from variable names to pointers (LLVM Value*) is stored in val_map
   string op = json_op.getValue().str();
+  cout << op << endl;
+
   if (op == "const") {
     // get all the useful fields
     assert(json_dest && "const instruction missing field dest!\n");
@@ -82,14 +84,14 @@ void createInst(
     bool bool_val;
     if (type == "int") {
       int_val = (obj->getInteger("value")).getValue();
-      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(llvm::ConstantInt::get(t_int_, int_val, true), alloca_val);
     }
     else if (type == "bool") {
       bool_val = (obj->getBoolean("value")).getValue();
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(llvm::ConstantInt::get(t_bool_, bool_val), alloca_val);
     }
     else 
@@ -98,194 +100,197 @@ void createInst(
   else if (op == "add") {
     assert(json_dest && "add instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* add_val = builder->CreateAdd(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(add_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(add_val, alloca_val);
     }
   }
   else if (op == "mul") {
     assert(json_dest && "mul instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* mul_val = builder->CreateMul(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(mul_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(mul_val, alloca_val);
     }
   }
   else if (op == "sub") {
     assert(json_dest && "sub instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* sub_val = builder->CreateSub(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(sub_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(sub_val, alloca_val);
     }
   }
   else if (op == "div") {
     assert(json_dest && "div instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* div_val = builder->CreateSDiv(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(div_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_int_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(div_val, alloca_val);
     }
   }
   else if (op == "eq") {
     assert(json_dest && "eq instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
-    llvm::Value* eq_val = builder->CreateICmpEq(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    llvm::Value* eq_val = builder->CreateICmpEQ(lhs, rhs, dest);
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(eq_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(eq_val, alloca_val);
     }
   }
   else if (op == "lt") {
     assert(json_dest && "lt instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* lt_val = builder->CreateICmpSLT(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(lt_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(lt_val, alloca_val);
     }
   }
   else if (op == "gt") {
     assert(json_dest && "gt instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* gt_val = builder->CreateICmpSGT(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(gt_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(gt_val, alloca_val);
     }
   }
   else if (op == "not") {
     assert(json_dest && "not instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* val_ptr = val_map[args[0]];
+    llvm::Value* val_ptr = (*val_map)[args[0]];
     llvm::Value* val = builder->CreateLoad(val_ptr);
     llvm::Value* not_val = builder->CreateNot(val, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(not_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(not_val, alloca_val);
     }
   }
   else if (op == "and") {
     assert(json_dest && "and instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* and_val = builder->CreateAnd(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(and_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(and_val, alloca_val);
     }
   }
   else if (op == "or") {
     assert(json_dest && "or instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* lhs_ptr = val_map[args[0]];
-    llvm::Value* rhs_ptr = val_map[args[1]];
+    llvm::Value* lhs_ptr = (*val_map)[args[0]];
+    llvm::Value* rhs_ptr = (*val_map)[args[1]];
     llvm::Value* lhs = builder->CreateLoad(lhs_ptr);
     llvm::Value* rhs = builder->CreateLoad(rhs_ptr);
     llvm::Value* or_val = builder->CreateOr(lhs, rhs, dest);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(or_val, dest_ptr);
     }
     else {
-      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Value* alloca_val = builder->CreateAlloca(t_bool_, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(or_val, alloca_val);
     }
   }
   else if (op == "jmp") {
     string target = args[0];
-    BasicBlock* target_bb = bb_map[target];
+    llvm::BasicBlock* target_bb = (*bb_map)[target].first;
     builder->CreateBr(target_bb);
+    (*bb_map)[target].second = true;
   }
   else if (op == "br") {
-    llvm::Value* cond_ptr = val_map[args[0]];
+    llvm::Value* cond_ptr = (*val_map)[args[0]];
     string true_target = args[1];
     string false_target = args[2];
-    BasicBlock* true_target_bb = bb_map[true_target];
-    BasicBlock* false_target_bb = bb_map[false_target];
+    llvm::BasicBlock* true_target_bb = (*bb_map)[true_target].first;
+    llvm::BasicBlock* false_target_bb = (*bb_map)[false_target].first;
     llvm::Value* cond = builder->CreateLoad(cond_ptr);
-    builder->CreateCondBr(cond, lhs, rhs);
+    builder->CreateCondBr(cond, true_target_bb, false_target_bb);
+    (*bb_map)[true_target].second = true;
+    (*bb_map)[false_target].second = true;
   }
   else if (op == "ret") {
     builder->CreateRet(llvm::ConstantInt::get(t_int_, 0, true));
@@ -295,21 +300,21 @@ void createInst(
     // assume that the destination is stored in "dest", the argument stored in "args"
     assert(json_dest && "id instruction missing field dest!\n");
     string dest = json_dest.getValue().str();
-    llvm::Value* val_ptr = val_map[args[0]];
+    llvm::Value* val_ptr = (*val_map)[args[0]];
     llvm::Value* val = builder->CreateLoad(val_ptr);
-    if (val_map.count(dest)) {
-      llvm::Value* dest_ptr = val_map[dest];
+    if (val_map->count(dest)) {
+      llvm::Value* dest_ptr = (*val_map)[dest];
       builder->CreateStore(val, dest_ptr);
     }
     else {
-      Type* val_type = val->getType();
-      llvm::Value* alloca_val = builder->CreateAlloca(val_type, dest + "_ptr");
-      val_map[dest] = alloca_val;
+      llvm::Type* val_type = val->getType();
+      llvm::Value* alloca_val = builder->CreateAlloca(val_type, llvm::ConstantInt::getSigned(t_int_, 1));
+      (*val_map)[dest] = alloca_val;
       builder->CreateStore(val, alloca_val);
     }
   }
   else if (op == "print") {
-    llvm::Value* val_ptr = val_map[args[0]];
+    llvm::Value* val_ptr = (*val_map)[args[0]];
     llvm::Value* val = builder->CreateLoad(val_ptr);
     std::vector<llvm::Type*> call_types;
     call_types.push_back(t_char_p_);
@@ -317,9 +322,10 @@ void createInst(
     llvm::FunctionType* call_ftype = llvm::FunctionType::get(t_int_, call_types, false);
     llvm::Function* printf_call = llvm::cast<llvm::Function>(module->getOrInsertFunction("printf", call_ftype));
     std::vector<llvm::Value*> printf_args;
-    args.push_back(builder_->CreateGlobalStringPtr("%d\n"));
-    args.push_back(llvm::ConstantInt::getSigned(t_int_, val));
-    builder_->CreateCall(printf_call, args);
+    printf_args.push_back(builder->CreateGlobalStringPtr("%d\n"));
+    printf_args.push_back(val);
+    builder->CreateCall(printf_call, printf_args);
+    cout << "here\n";
   }
   // do nothing for nop
   else if (op == "nop") ; 
@@ -357,11 +363,13 @@ llvm::Function* createFunction(
 
   // get the name
   string fname = json_fname.getValue().str();
+  cout << fname << endl;
 
   // create the function
   std::vector<llvm::Type*> arg_types;
   llvm::FunctionType* ftype = llvm::FunctionType::get(t_int_, arg_types, false);
   llvm::Function* f = llvm::Function::Create(ftype, llvm::Function::ExternalLinkage, fname, m);
+  cout << "Function created!\n";
 
   // get all the instructions
   auto json_insts = json_func->getArray("instrs");
@@ -387,9 +395,9 @@ llvm::Function* createFunction(
       /*   ...
        *   br cond somewhere somewhere_else
        *   [ int: a = add b c ]
-       * somewhre:
+       * somewhere:
        *   int: a = add c d
-       * somewhre_else:
+       * somewhere_else:
        *   int: e = add c b
        *   ... 
       */
@@ -400,6 +408,8 @@ llvm::Function* createFunction(
       bb_map[""] = BasicBlockFlag_T(bb, false);
     }
   }
+
+  cout << "All basic blocks created!\n";
 
   // do it again, this time we try to insert instructions into the basic blocks
   for (auto inst = json_insts->begin(), inst_end = json_insts->end(); inst != inst_end; inst ++ ) {
@@ -413,7 +423,7 @@ llvm::Function* createFunction(
       builder->SetInsertPoint(curr_bb);
       // notice that this block may not be used yet!
     }
-    else if (inst == json_insts->begin()){
+    else if (inst == json_insts->begin()) {
       // in this case the block is the entry block
       llvm::BasicBlock* curr_bb = bb_map[""].first;
       // it has to be used, since we will process the first instruction immediately
@@ -425,6 +435,8 @@ llvm::Function* createFunction(
     else 
       createInst(builder, obj, &bb_map, &val_map);
   }
+  // add a return at the end of the function, regardless of whether the function has a return or not
+  builder->CreateRet(llvm::ConstantInt::get(t_int_, 0, true));
 
   return f;
 }
@@ -477,6 +489,7 @@ int main(int argc, char** argv) {
       // this key should map to a json array containing all functions (in [ ] )
       // currently we only have one function
       for (int i = 0; i < fa->size(); i ++ ) {
+        cout << "Create function ... " << endl;
         llvm::Function* f = createFunction((*fa)[i], builder_.get(), ctx_.get(), module);
         if (!f) {
           cout << "Create function failed. " << endl;
@@ -490,6 +503,7 @@ int main(int argc, char** argv) {
   std::error_code ecode;
   llvm::raw_fd_ostream dest(string(argv[2]), ecode, llvm::sys::fs::F_None);
   module->print(dest, nullptr);
+  cout << "dump code\n";
 
   // execute the function
   // first, initialize LLVM environment
@@ -503,7 +517,7 @@ int main(int argc, char** argv) {
   builder.setEngineKind(llvm::EngineKind::JIT);
   llvm::ExecutionEngine* ee = builder.create();
   // run the main function
-  func_t func = (func_t)(ee->getFunctionAddress("my_main"));
+  func_t func = (func_t)(ee->getFunctionAddress("main"));
   (*func)();
   delete ee;
   return 0;
