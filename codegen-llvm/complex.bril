@@ -1,0 +1,16 @@
+main {
+  a: int = const 42;
+  b: int = const 22;
+  v: int = add a b;
+  m: int = mul v b;
+  cond: bool = lt a m;
+  br cond b1 b2;
+  n: int = mul a b;
+b1:
+  m: int = const 5;
+  print v;
+b2:
+  jmp end;
+end:
+  print a;
+}

@@ -419,6 +419,20 @@ llvm::Function* createFunction(
       string bb_name = json_bb_name.getValue().str();
       assert((bb_map.count(bb_name) > 0) && "Key is not found in basic block map!\n");
       llvm::BasicBlock* curr_bb = bb_map[bb_name].first;
+
+      // check terminator of prev basic block
+      if (inst != json_insts->begin()) {
+        // get prev bb before insert to next one 
+        llvm::BasicBlock* bb = builder->GetInsertBlock();
+        // insert jmp to curr block if not well terminated 
+        llvm::Instruction* term_inst = bb->getTerminator();
+        if (term_inst == nullptr) {
+            string target = bb_name;
+            llvm::BasicBlock* target_bb = bb_map[target].first;
+            builder->CreateBr(target_bb);
+            bb_map[target].second = true;
+        }
+      }
       // set IRBuilder to insert stuff into this block
       builder->SetInsertPoint(curr_bb);
       // notice that this block may not be used yet!
