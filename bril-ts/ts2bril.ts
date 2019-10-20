@@ -5,21 +5,41 @@ import {Builder} from './builder';
 import {readStdin} from './util';
 
 const opTokens = new Map<ts.SyntaxKind, [bril.ValueOpCode, bril.Type]>([
-  [ts.SyntaxKind.PlusToken,               ["add", "int"]],
-  [ts.SyntaxKind.AsteriskToken,           ["mul", "int"]],
-  [ts.SyntaxKind.MinusToken,              ["sub", "int"]],
-  [ts.SyntaxKind.SlashToken,              ["div", "int"]],
-  [ts.SyntaxKind.LessThanToken,           ["lt",  "bool"]],
-  [ts.SyntaxKind.LessThanEqualsToken,     ["le",  "bool"]],
-  [ts.SyntaxKind.GreaterThanToken,        ["gt",  "bool"]],
-  [ts.SyntaxKind.GreaterThanEqualsToken,  ["ge",  "bool"]],
-  [ts.SyntaxKind.EqualsEqualsToken,       ["eq",  "bool"]],
-  [ts.SyntaxKind.EqualsEqualsEqualsToken, ["eq",  "bool"]],
+  [ts.SyntaxKind.PlusToken,               ["fadd", "double"]],
+  [ts.SyntaxKind.AsteriskToken,           ["fmul", "double"]],
+  [ts.SyntaxKind.MinusToken,              ["fsub", "double"]],
+  [ts.SyntaxKind.SlashToken,              ["fdiv", "double"]],
+  [ts.SyntaxKind.LessThanToken,           ["flt",  "bool"]],
+  [ts.SyntaxKind.LessThanEqualsToken,     ["fle",  "bool"]],
+  [ts.SyntaxKind.GreaterThanToken,        ["fgt",  "bool"]],
+  [ts.SyntaxKind.GreaterThanEqualsToken,  ["fge",  "bool"]],
+  [ts.SyntaxKind.EqualsEqualsToken,       ["feq",  "bool"]],
+  [ts.SyntaxKind.EqualsEqualsEqualsToken, ["feq",  "bool"]],
 ]);
+
+// Translates floating point operations to integer operations if appropriate
+function overloadInt(op: bril.ValueOpCode, reference: bril.Type) : bril.ValueOpCode {
+  if (reference === "int") {
+    switch (op) {
+      case "fadd":  return "add"
+      case "fmul":  return "mul"
+      case "fsub":  return "sub"
+      case "fdiv":  return "div"
+      case "flt":   return "lt"
+      case "fle":   return "le"
+      case "fgt":   return "gt"
+      case "fge":   return "ge"
+      case "feq":   return "eq"
+    }
+  }
+  return op
+}
 
 function brilType(node: ts.Node, checker: ts.TypeChecker): bril.Type {
   let tsType = checker.getTypeAtLocation(node);
   if (tsType.flags === ts.TypeFlags.Number) {
+    return "double";
+  } else if (tsType.flags == ts.TypeFlags.BigInt) {
     return "int";
   } else if (tsType.flags === ts.TypeFlags.Boolean) {
     return "bool";
@@ -39,7 +59,13 @@ function emitBril(prog: ts.Node, checker: ts.TypeChecker): bril.Program {
     switch (expr.kind) {
     case ts.SyntaxKind.NumericLiteral: {
       let lit = expr as ts.NumericLiteral;
-      let val = parseInt(lit.text);
+      let val = parseFloat(lit.text);
+      return builder.buildDouble(val);
+    }
+
+    case ts.SyntaxKind.BigIntLiteral: {
+      let lit = expr as ts.NumericLiteral;
+      let val = parseFloat(lit.text);
       return builder.buildInt(val);
     }
 
@@ -82,6 +108,10 @@ function emitBril(prog: ts.Node, checker: ts.TypeChecker): bril.Program {
 
       let lhs = emitExpr(bin.left);
       let rhs = emitExpr(bin.right);
+      op = overloadInt(op, lhs.type);
+      // Also update the type reflect operation overloading
+      if (lhs.type === "int" && (type === "float" || type === "double"))
+        type = "int"
       return builder.buildValue(op, [lhs.dest, rhs.dest], type);
 
     // Support call instructions---but only for printing, for now.
@@ -150,7 +180,7 @@ function emitBril(prog: ts.Node, checker: ts.TypeChecker): bril.Program {
         // Statement chunks.
         builder.buildLabel(thenLab);
         emit(if_.thenStatement);
-        builder.buildEffect("jmp", ["endif"]);
+        builder.buildEffect("jmp", [endLab]);
         builder.buildLabel(elseLab);
         if (if_.elseStatement) {
           emit(if_.elseStatement);

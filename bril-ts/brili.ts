@@ -13,9 +13,18 @@ const argCounts: {[key in bril.OpCode]: number | null} = {
   gt: 2,
   ge: 2,
   eq: 2,
-  not: 2,
+  not: 1,
   and: 2,
   or: 2,
+  fadd: 2,
+  fmul: 2,
+  fsub: 2,
+  fdiv: 2,
+  flt: 2,
+  fle: 2,
+  fgt: 2,
+  fge: 2,
+  feq: 2,
   print: null,  // Any number of arguments.
   br: 3,
   jmp: 1,
@@ -23,7 +32,8 @@ const argCounts: {[key in bril.OpCode]: number | null} = {
   nop: 0,
 };
 
-type Env = Map<bril.Ident, bril.Value>;
+type Value = boolean | BigInt | Number;
+type Env = Map<bril.Ident, Value>;
 
 function get(env: Env, ident: bril.Ident) {
   let val = env.get(ident);
@@ -45,7 +55,7 @@ function checkArgs(instr: bril.Operation, count: number) {
 
 function getInt(instr: bril.Operation, env: Env, index: number) {
   let val = get(env, instr.args[index]);
-  if (typeof val !== 'number') {
+  if (typeof val !== 'bigint') {
     throw `${instr.op} argument ${index} must be a number`;
   }
   return val;
@@ -57,6 +67,22 @@ function getBool(instr: bril.Operation, env: Env, index: number) {
     throw `${instr.op} argument ${index} must be a boolean`;
   }
   return val;
+}
+
+// Works for any supported precision of floating point (i.e. float or double)
+function getFloat(instr: bril.Operation, env: Env, index: number) {
+  let val = get(env, instr.args[index]);
+  if (typeof val !== 'number') {
+    throw `${instr.op} argument ${index} must be a float or double`;
+  }
+  return val;
+}
+
+// Applies the type-correct level of precision to a floating point operation in bril
+function setFloatPrecision (type: bril.Type, value: number) {
+  if (type === "float")
+    return Math.fround(value)
+  return value
 }
 
 /**
@@ -89,7 +115,18 @@ function evalInstr(instr: bril.Instruction, env: Env): Action {
 
   switch (instr.op) {
   case "const":
-    env.set(instr.dest, instr.value);
+    // Ensure that JSON ints get represented appropriately.
+    let value: Value;
+    if (typeof instr.value === "number") {
+      if (instr.type === "double" || instr.type === "float")
+        value = setFloatPrecision(instr.type, instr.value);
+      else
+        value = BigInt(Math.floor(instr.value))
+    } else {
+      value = instr.value;
+    }
+
+    env.set(instr.dest, value);
     return NEXT;
 
   case "id": {
@@ -170,8 +207,66 @@ function evalInstr(instr: bril.Instruction, env: Env): Action {
     return NEXT;
   }
 
+  case "fadd": {
+    let val = getFloat(instr, env, 0) + getFloat(instr, env, 1);
+    val = setFloatPrecision(instr.type, val);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fsub": {
+    let val = getFloat(instr, env, 0) - getFloat(instr, env, 1);
+    val = setFloatPrecision(instr.type, val);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fmul": {
+    let val = getFloat(instr, env, 0) * getFloat(instr, env, 1);
+    val = setFloatPrecision(instr.type, val);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fdiv": {
+    let val = getFloat(instr, env, 0) / getFloat(instr, env, 1);
+    val = setFloatPrecision(instr.type, val);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fle": {
+    let val = getFloat(instr, env, 0) <= getFloat(instr, env, 1);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "flt": {
+    let val = getFloat(instr, env, 0) < getFloat(instr, env, 1);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fgt": {
+    let val = getFloat(instr, env, 0) > getFloat(instr, env, 1);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "fge": {
+    let val = getFloat(instr, env, 0) >= getFloat(instr, env, 1);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "feq": {
+    let val = getFloat(instr, env, 0) === getFloat(instr, env, 1);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
   case "print": {
-    let values = instr.args.map(i => get(env, i));
+    let values = instr.args.map(i => get(env, i).toString());
     console.log(...values);
     return NEXT;
   }
