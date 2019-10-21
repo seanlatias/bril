@@ -1,0 +1,42 @@
+main {
+  i: int = const 0;
+  v0: int[3] = new int[3];
+  v1: int[3] = new int[3];
+  v2: int[3] = new int[3];
+  v11: int = const 0;
+  v22: int = const 1;
+  v33: int = const 2;
+
+  v3: int = const 5;
+  set v0 v11 v3;
+  v3: int = const 4;
+  set v0 v22 v3;
+  v3: int = const 8;
+  set v0 v33 v3;
+
+  v3: int = const 5;
+  set v1 v11 v3;
+  v3: int = const 4;
+  set v1 v22 v3;
+  v3: int = const 8;
+  set v1 v33 v3;
+
+for.cond:
+  v5: int = id i;
+  v6: int = const 3;
+  v7: bool = lt v5 v6;
+  br v7 for.body for.end;
+
+for.body:
+  v8: int = index v0 i;
+  v9: int = index v1 i;
+  v10: int = add v8 v9;
+  set v2 i v10; 
+  v12: int = add i v22; 
+  i : int = id v12;
+  jmp for.cond;
+
+for.end:
+  v11: int = index v2 v22;
+  print v11;
+}
