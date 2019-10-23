@@ -24,6 +24,7 @@ def block_map(blocks):
         else:
             # Make up a new name for this anonymous block.
             name = fresh('b', by_name)
+            block.insert(0, {'label': name})
 
         # Add the block to the mapping.
         by_name[name] = block
