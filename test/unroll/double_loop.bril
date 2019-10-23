@@ -25,5 +25,8 @@ for.end.8:
   i: int = add i v28;
   jmp for.cond.3;
 for.end.3:
+  v23: int = const 13;
+  v25: int = index v0 v23;
+  print v25;
   ret;
 }

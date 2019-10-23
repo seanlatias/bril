@@ -11,6 +11,7 @@ for.body.1:
   i: int = add i v10;
   jmp for.cond.1;
 for.end.1:
+  print sum;
   j: int = const 0;
 for.cond.12:
   v15: int = const 10;
@@ -22,5 +23,6 @@ for.body.12:
   j: int = add j v21;
   jmp for.cond.12;
 for.end.12:
+  print sum;
   ret;
 }
