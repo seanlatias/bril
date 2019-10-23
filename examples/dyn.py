@@ -5,6 +5,7 @@ import copy
 import operator
 from datetime import datetime
 
+from dom import get_dom
 from cfg import block_map, successors, add_terminators
 from form_blocks import form_blocks
 
@@ -44,10 +45,8 @@ def bid(instr):
     variables[instr["dest"]].append((value, time))
 
 def bprint(instr):
-    if variables[instr["args"][0]] == "int":
-        return 'printf("%" PRId64 "\\n", {});'.format(instr["args"][0])
-    if variables[instr["args"][0]] == "bool":
-        return 'printf({}?"true\\n":"false\\n");'.format(instr["args"][0])
+    value = variables[instr["args"][0]][-1][0] 
+    # print('print: var {} :'.format(value))
 
 def arith(instr):
     ops={"add":"+",
@@ -160,22 +159,75 @@ blocks = block_map(form_blocks(instrs))
 add_terminators(blocks)
 succ = {name: successors(block[-1]) for name, block in blocks.items()}
 
+# locate back edge and count trip num
+# where its succesor dominates itself
+back_edge = {}
+dom = get_dom(succ, list(blocks.keys())[0])
+for k, v in succ.items():
+  for s in v:
+    if s in dom[k]:
+      back_edge[k] = s
+
 flag = True
 block = blocks['b1']
+
+# track path from header to jmp
+body = dict()
+count = dict()
+for k, v in back_edge.items():
+  body[v] = [v, k]
+  count[v] = 0
+
+name = 'b1'
 while flag:
+  # start tracking
+  curr = name
   for i in block:
-    print(i)
+    # print(i)
     if "op" in i:
         ret = opcode[i["op"]](i)
         if ret: # jump or br
-          print(ret)
           name = ret
           break
         if i["op"] == "ret":
           flag = False; break
     elif "label" in i: pass
+  if curr in body:
+    val = body[curr]
+    if name in val: 
+      count[curr] = count[curr] + 1
+    elif name in dom[val[-1]]: # add dominance nodes
+      body[curr].append(name)
   block = blocks[name] 
 
-type_declr={"int":"int64_t", "bool":"int"};
-for k,v in variables.items():
-    print(k, v)
+# for k,v in variables.items():
+#     print(k, v)
+
+# perform unrolling : 
+new_instrs = copy.deepcopy(obj['functions'][0]['instrs'])
+# remove back edge and jmp terminator
+start, end = 0, 0
+prev, curr = None, None
+for k, v in body.items():
+  trip = count[k]
+  for index in range(len(new_instrs)):
+    i = new_instrs[index]
+    if "label" in i:
+      if not curr:
+        curr = i["label"]
+      else: 
+        prev = curr
+        curr = i["label"]
+      # remove back edge and dup
+      if prev == v[-1]:
+        end = index-1
+      # record starting
+      if prev == v[0]:
+        start = index-1
+  prev = new_instrs[0:start]
+  post = new_instrs[end+1:-1] # remove jmp to cond
+  new_instrs = prev + trip * new_instrs[start+2:end-1] + post 
+
+obj['functions'][0]['instrs'] = new_instrs
+out = json.dumps(obj)
+print(out)
