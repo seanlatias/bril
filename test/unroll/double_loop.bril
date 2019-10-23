@@ -3,41 +3,29 @@ main {
   v4: int = const 0;
   i: int = id v4;
 for.cond.3:
-  v5: int = id i;
   v6: int = const 4;
-  v7: bool = lt v5 v6;
+  v7: bool = lt i v6;
   br v7 for.body.3 for.end.3;
 for.body.3:
   v9: int = const 0;
   j: int = id v9;
 for.cond.8:
-  v10: int = id j;
   v11: int = const 4;
-  v12: bool = lt v10 v11;
+  v12: bool = lt j v11;
   br v12 for.body.8 for.end.8;
 for.body.8:
-  v13: int = id i;
   v14: int = const 4;
-  v15: int = mul v13 v14;
-  v16: int = id j;
-  v17: int = add v15 v16;
-  index: int = id v17;
-  v18: int = id i;
-  v19: int = id j;
-  v20: int = add v18 v19;
-  v21: int = id index;
-  set v0 v21 v20;
-  v23: int = const 0;
-  v24: int = id j;
+  v15: int = mul i v14;
+  index: int = add v15 j;
+  v20: int = add i j;
+  set v0 index v20;
   v25: int = const 1;
-  v26: int = add v24 v25;
-  j: int = id v26;
+  j: int = add j v25;
   jmp for.cond.8;
 for.end.8:
-  v27: int = id i;
   v28: int = const 1;
-  v29: int = add v27 v28;
-  i: int = id v29;
+  i: int = add i v28;
   jmp for.cond.3;
 for.end.3:
+  ret;
 }

@@ -32,14 +32,6 @@
           "label": "for.cond.3"
         },
         {
-          "args": [
-            "i"
-          ],
-          "dest": "v5",
-          "op": "id",
-          "type": "int"
-        },
-        {
           "dest": "v6",
           "op": "const",
           "type": "int",
@@ -47,7 +39,7 @@
         },
         {
           "args": [
-            "v5",
+            "i",
             "v6"
           ],
           "dest": "v7",
@@ -83,14 +75,6 @@
           "label": "for.cond.8"
         },
         {
-          "args": [
-            "j"
-          ],
-          "dest": "v10",
-          "op": "id",
-          "type": "int"
-        },
-        {
           "dest": "v11",
           "op": "const",
           "type": "int",
@@ -98,7 +82,7 @@
         },
         {
           "args": [
-            "v10",
+            "j",
             "v11"
           ],
           "dest": "v12",
@@ -117,14 +101,6 @@
           "label": "for.body.8"
         },
         {
-          "args": [
-            "i"
-          ],
-          "dest": "v13",
-          "op": "id",
-          "type": "int"
-        },
-        {
           "dest": "v14",
           "op": "const",
           "type": "int",
@@ -132,7 +108,7 @@
         },
         {
           "args": [
-            "v13",
+            "i",
             "v14"
           ],
           "dest": "v15",
@@ -141,49 +117,17 @@
         },
         {
           "args": [
+            "v15",
             "j"
           ],
-          "dest": "v16",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v15",
-            "v16"
-          ],
-          "dest": "v17",
+          "dest": "index",
           "op": "add",
           "type": "int"
         },
         {
           "args": [
-            "v17"
-          ],
-          "dest": "index",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
-            "i"
-          ],
-          "dest": "v18",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
+            "i",
             "j"
-          ],
-          "dest": "v19",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v18",
-            "v19"
           ],
           "dest": "v20",
           "op": "add",
@@ -191,33 +135,11 @@
         },
         {
           "args": [
-            "index"
-          ],
-          "dest": "v21",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
             "v0",
-            "v21",
+            "index",
             "v20"
           ],
           "op": "set"
-        },
-        {
-          "dest": "v23",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "j"
-          ],
-          "dest": "v24",
-          "op": "id",
-          "type": "int"
         },
         {
           "dest": "v25",
@@ -227,19 +149,11 @@
         },
         {
           "args": [
-            "v24",
+            "j",
             "v25"
           ],
-          "dest": "v26",
-          "op": "add",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v26"
-          ],
           "dest": "j",
-          "op": "id",
+          "op": "add",
           "type": "int"
         },
         {
@@ -252,14 +166,6 @@
           "label": "for.end.8"
         },
         {
-          "args": [
-            "i"
-          ],
-          "dest": "v27",
-          "op": "id",
-          "type": "int"
-        },
-        {
           "dest": "v28",
           "op": "const",
           "type": "int",
@@ -267,19 +173,11 @@
         },
         {
           "args": [
-            "v27",
+            "i",
             "v28"
           ],
-          "dest": "v29",
-          "op": "add",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v29"
-          ],
           "dest": "i",
-          "op": "id",
+          "op": "add",
           "type": "int"
         },
         {
@@ -290,6 +188,10 @@
         },
         {
           "label": "for.end.3"
+        },
+        {
+          "args": [],
+          "op": "ret"
         }
       ],
       "name": "main"
