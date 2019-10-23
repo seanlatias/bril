@@ -39,14 +39,14 @@ def add_blocks_to_loop(entry, exit, preds, dominators):
   We have to make sure that the nodes are dominated by the entry. 
   """
 
-  loop = set([entry, exit])
+  loop = [entry, exit]
   working_set = set(preds[exit])
 
   while len(working_set) > 0:
     new_working_set = set()
     for bb in working_set:
       if (entry in dominators[bb]) and (not bb in loop):
-        loop.add(bb)
+        loop.append(bb)
         pred_list = preds[bb]
         for predecessor  in pred_list:
           new_working_set.add(predecessor)
@@ -466,18 +466,23 @@ def unroll(blocks, preds, succs, loop, tripcount):
     exit_block_name = name_str.format(loop['name'], i, exit)
     if exit_block_name in loop_blocks:
       # remove the label
+      print(loop_blocks[exit_block_name][0])
       del loop_blocks[exit_block_name][0]
       # remove the jump at the end
       if (not loop['exit_from_exit']) or (i < tripcount - 1):
+        print(loop_blocks[exit_block_name][-1])
         del loop_blocks[exit_block_name][-1]
     entry_block_name = name_str.format(loop['name'], i, entry)
     if entry_block_name in loop_blocks:
       # remove the label
       if i > 0:
+        print(loop_blocks[entry_block_name][0])
         del loop_blocks[entry_block_name][0]
       # remove the jump at the end
       if (loop_blocks[entry_block_name][-1]['op'] == 'jmp') and (i < tripcount):
+        print(loop_blocks[entry_block_name][-1])
         del loop_blocks[entry_block_name][-1]
+  
 
   return {**new_blocks, **loop_blocks}
 
@@ -518,6 +523,7 @@ def unroll_loops(bril):
     # go through all interesting loops
     for _, l in loops.items():
       print('Unrolling loop ', l['name'])
+      print(l['nodes'])
       # compute tripcount
       tripcount = get_tripcount(l, preds, succs, in_consts, out_consts, in_rd, out_rd, blocks)
       print('Tripcount is: ', tripcount)
