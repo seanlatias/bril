@@ -32,7 +32,7 @@ label.1: IDENT ":"
 lit: SIGNED_INT  -> int
   | BOOL     -> bool
 
-type: CNAME | (CNAME) ("[") (DIGIT) ("]")
+type: CNAME | (CNAME) ("[") (DIGIT)* ("]")
 BOOL: "true" | "false"
 IDENT: ("_"|"%"|LETTER) ("_"|"%"|"."|LETTER|DIGIT)*
 COMMENT: /#.*/
