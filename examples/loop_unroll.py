@@ -1,3 +1,17 @@
+"""
+                                    Loop Unrolling Pass
+
+  This pass does full unrolling on selected loops. Limitations apply. 
+    1. Assumptions on the condition: the condition for the loop should be a 'lt' with the loop
+       induction variable being the first argument. 
+    2. Assumptions on the branch: the loop guard should branch back to the loop when the condition
+       is True and jump out of the loop when the condition is False. 
+    3. Assumptions on the instruction that updates the induction variable: should be of the form
+       i = i + 4, i = i - 5, etc. 
+    4. We assume that copy propagation has already been performed on the code.  
+"""
+
+
 from __future__ import division
 from __future__ import print_function
 
@@ -13,40 +27,35 @@ from util import flatten
 import cfg
 
 
+###################################################################################################
+#                                 Functions used to find loops                                    #
+###################################################################################################
+
 # add blocks to a loop given its entry and exit
 # does what step 2 describes in the "find_loops" function
-def add_blocks_to_loop(entry, exit, preds, dom):
+def add_blocks_to_loop(entry, exit, preds, dominators):
   """
   To do this, we search backwards from the exit so that all blocks on the path can reach the exit. 
   We have to make sure that the nodes are dominated by the entry. 
   """
 
-  # initialize
-  l = set([entry, exit])
+  loop = set([entry, exit])
   working_set = set(preds[exit])
 
-  # run until convergence
   while len(working_set) > 0:
-    # initialize the working set for the next round
     new_working_set = set()
-    # go through the current working set
-    for b in working_set:
-      # check if the block is dominated by entry and not in the loop yet
-      if (entry in dom[b]) and (not b in l):
-        # if so, add the block to the loop
-        l.add(b)
-        # then propagate, get the predecessors of this block
-        pred_list = preds[b]
-        # throw everything into the working set, we'll filter things out in the next round
-        for p in pred_list:
-          # duplicates are handled by the set
-          new_working_set.add(p)
+    for bb in working_set:
+      if (entry in dominators[bb]) and (not bb in loop):
+        loop.add(bb)
+        pred_list = preds[bb]
+        for predecessor  in pred_list:
+          new_working_set.add(predecessor)
     working_set = new_working_set
 
-  return {'entry': entry, 'exit': exit, 'nodes': l}
+  return {'entry': entry, 'exit': exit, 'nodes': loop}
 
 # check if a loop is our interesting type
-def check_loop(l, succs):
+def check_loop(loop, succs):
   """
   Notice that we are only interested in loops whose tripcounts can be statically computed,
   because we only do full unrolling. So any loop with irregular structures will not be included. 
@@ -54,37 +63,51 @@ def check_loop(l, succs):
   exit. 
   """
 
-  for b in l['nodes']:
-    if not ((b == l['entry']) or (b == l['exit'])):
-      for s in succs[b]:
-        if not s in l:
+  # check for outgoing edges that are not in entry or exit
+  for bb in loop['nodes']:
+    if not ((bb == loop['entry']) or (bb == loop['exit'])):
+      for successor in succs[bb]:
+        if not successor in loop:
           return False
   
-  exit_from_entry = False
-  count_entry = 0
-  for s in succs[l['entry']]:
-    if not s in l['nodes']:
-      exit_from_entry = True
-      count_entry += 1
+  # count the number of outgoing edges in entry and exit
+  exit_pos = {'entry': False, 'exit': False}
+  counts = {'entry': 0, 'exit': 0}
+  for bb_key in ['entry', 'exit']:
+    bb = loop[bb_key]
+    for successor in succs[bb]:
+      if not successor in loop['nodes']:
+        exit_pos[bb_key] = True
+        counts[bb_key] += 1
 
-  exit_from_exit = False
-  count_exit = 0
-  for s in succs[l['exit']]:
-    if not s in l['nodes']:
-      exit_from_exit = True
-      count_exit += 1
+  # add a flag to indicate the exit position
+  loop['exit_from_exit'] = exit_pos['exit']
 
-  if exit_from_exit:
-    l['exit_from_exit'] = True
-  elif exit_from_entry:
-    l['exit_from_exit'] = False
+  # condition to check whether the loop is interesting or not
+  is_valid = not(exit_pos['entry'] and exit_pos['exit']) 
+  is_valid = is_valid or (counts['entry'] != 1) or (counts['exit'] != 1)
+  return is_valid 
 
-  return not(exit_from_entry and exit_from_exit) or (count_entry != 1) or (count_exit != 1)
+# use the subset operator to check whether a loop contains subloops
+def filter_inner_most_loops(loops):
+
+  remove_list = []
+  for name1, loop1 in loops.items():
+    for name2, loop2 in loops.items():
+      if not name1 == name2:
+        if loop1['nodes'].issuperset(loop2['nodes']):
+          remove_list.append(loop1)
+          break
+
+  for l in remove_list:
+    del loops[l]
+
+  return loops
 
 # find loops
 # algorithm from ECE5775 fall 2018 slides: Control Flow Graph
 # credit to Prof. Zhiru Zhang
-def find_loops(entry, preds, succs, dom):
+def find_loops(entry, preds, succs, dominators):
   """
   This function finds proper loops for unrolling. We adopt the loop identification algorithm 
   described in Prof. Zhang's slides, which does the following:
@@ -94,93 +117,25 @@ def find_loops(entry, preds, succs, dom):
        by A, add it to the loop. 
   """
 
-  # we use a dictionary to store loops
   loops = {}
   name_counter = 0
-  # iterate through all blocks, get their successors
-  for b, succ_list in succs.items():
-    # iterate through successors
-    for s in succ_list:
-      # if b's successor s dominates b, we've found a back-edge!
-      if s in dom[b]:
-        # now we have a new loop
-        new_loop = add_blocks_to_loop(s, b, preds, dom)
-        # check if the loop is interesting or not
+  for bb, succ_list in succs.items():
+    for successor in succ_list:
+      if successor in dominators[bb]:
+        new_loop = add_blocks_to_loop(successor, bb, preds, dominators)
         if check_loop(new_loop, succs):
           new_loop['name'] = 'L' + str(name_counter)
           loops['L' + str(name_counter)] = new_loop
           name_counter += 1
 
-  return loops
-
-# use the subset operator to check whether a loop contains subloops
-def filter_inner_most_loops(loops):
-
-  remove_list = []
-  for name1, l1 in loops:
-    for name2, l2 in loops:
-      if not name1 == name2:
-        if l1['nodes'].issuperset(l2['nodes']):
-          remove_list.append(l1)
-          break
-
-  for l in remove_list:
-    del loops[l]
+  # we only unroll loops that do not have subloops
+  loops = filter_inner_most_loops(loops)
 
   return loops
 
-# handle trivial cases when computing loop bound
-def handle_trivial_case(bounds, op, in_entry):
-
-  tripcount = None
-  if bounds[0] < bounds[1]:
-    pass # infinite loop
-  # if condition never satisfied, if the loop guard is in the exit the loop will be executed once
-  elif in_entry:
-    tripcount = 0
-  else:
-    tripcount = 1
-
-  return tripcount
-
-# check if the indvar update instruction is as we expected
-def check_inst(inst):
-  if not inst['op'] in ['add', 'sub']:
-    return False
-  if not inst['dest'] in inst['args']:
-    return False
-  return True
-
-# actually compute the tripcount
-def compute_tripcount(op, start, end, step, negate):
-
-  actual_op = op
-
-  if step == 0:
-    return None
-
-  # negate the operand if necessary
-  # now everything is indvar <op> bound
-  if negate:
-    if actual_op == 'gt':
-      actual_op = 'lt'
-    elif actual_op == 'lt':
-      actual_op = 'gt'
-
-  if actual_op == 'lt':
-    if start >= end: 
-      tripcount = 0
-    else:
-      tripcount = (end - start + step - 1) // step # actually a ceiling
-      # nevative values refer to an infinite loop
-  elif actual_op == 'gt':
-    if start <= end:
-      tripcount = 0
-    else:
-      tripcount = (start - end - step - 1) // (-step)
-      # same here
-
-  return tripcount
+###################################################################################################
+#                            Functions used to compute tripcount                                  #
+###################################################################################################
 
 # find out-going edge
 def find_outgoing_edge(loop, succs):
@@ -189,26 +144,24 @@ def find_outgoing_edge(loop, succs):
   nodes = loop['nodes']
 
   target = None
-  source = None
   if loop['exit_from_exit']:
-    s = exit
+    source = exit
   else:
-    s = entry
+    source = entry
 
-  outgoing_targets = succs[s]
-  for b in outgoing_targets:
-    if not b in nodes:
-      target = b
-      source = s
+  outgoing_targets = succs[source]
+  for bb in outgoing_targets:
+    if not bb in nodes:
+      target = bb
       break
   assert(target is not None)
-  assert(source is not None)
 
-  return target, source
+  return target
 
 # find the instruction that computes the condition
 def find_cond_inst(blocks, loop_nodes, source, br, rds):
   cond = br['args'][0]
+
   # count the number of reaching definitions of the condition from inside the loop
   # this actually handles the case where the reaching definition is from the source block!
   rd_cnt = 0
@@ -234,6 +187,24 @@ def find_cond_inst(blocks, loop_nodes, source, br, rds):
 
   return actual_cond_update_inst, cond_update_inst[1]
 
+# get induction variable and bound
+def get_indvar_and_bound(cond_inst, cp_res):
+
+  bound = None
+
+  # assume the bound is at the second argument
+  bound_arg = cond_inst['args'][1]
+  if bound_arg in cp_res:
+    if cp_res[bound_arg] != '?':
+      bound = int(cp_res[bound_arg])
+
+  if bound is not None:
+    indvar = cond_inst['args'][0]
+  else:
+    indvar = None
+  
+  return indvar, bound
+
 # get the initial value of induction variable
 def get_init_val(nodes, preds, out_cp, indvar):
   init_val = set()
@@ -242,12 +213,72 @@ def get_init_val(nodes, preds, out_cp, indvar):
       cp_res = out_cp[b]
       if cp_res[indvar] != '?':
         init_val.add(int(cp_res[indvar]))
-  print('Init val is: ', init_val)
   # if we can not locate the only initial value, give up
   if len(init_val) != 1:
     return None
 
-  return init_val.pop()
+  return int(init_val.pop())
+
+# check if the indvar update instruction is as we expected
+# should be of the form: i = i + 4
+def check_inst(inst):
+  if not inst['op'] in ['add', 'sub']:
+    return False
+  if not inst['dest'] in inst['args']:
+    return False
+  return True
+
+# get the step size
+def get_step_size(loop_nodes, blocks, in_cp, indvar):
+
+  indvar_updates = []
+  for bb in loop_nodes:
+    for inst in blocks[bb]:
+      if 'dest' in inst:
+        if inst['dest'] == indvar:
+          indvar_updates.append((inst, bb))
+    
+  # give up if there is more than one
+  if len(indvar_updates) != 1:
+    return None
+  
+  indvar_update_inst = indvar_updates[0][0]
+  update_block = indvar_updates[0][1]
+  print('Induction update instruction is: ', indvar_update_inst, ' in block ', update_block)
+
+  # if the instruction is not as we expected, give up
+  if not check_inst(indvar_update_inst):
+    return None
+
+  # get the step size
+  step = None
+  for var in indvar_update_inst['args']:
+    if var != indvar:
+      cp_res = in_cp[update_block]
+      if var in cp_res:
+        if cp_res[var] != '?':
+          step = cp_res[var]
+          break
+
+  # we can finally compute the tripcount... 
+  if (indvar_update_inst['op'] == 'sub') and (step is not None):
+    step = -step
+
+  return step
+
+# actually compute the tripcount
+def compute_tripcount(start, end, step):
+
+  if step == 0:
+    return None
+
+  if start >= end: 
+    tripcount = 0
+  else:
+    tripcount = (end - start + step - 1) // step # actually a ceiling
+    # nevative values refer to an infinite loop
+
+  return tripcount
 
 # compute the tripcount of a loop, return None if it can not be determined
 def get_tripcount(loop, preds, succs, in_cp, out_cp, in_rd, out_rd, blocks):
@@ -270,95 +301,55 @@ def get_tripcount(loop, preds, succs, in_cp, out_cp, in_rd, out_rd, blocks):
        subtraction for now. With all the information retrieved above we can compute the tripcount. 
   """
 
-  target, source = find_outgoing_edge(loop, succs)
+  target = find_outgoing_edge(loop, succs)
+  source = loop['exit'] if loop['exit_from_exit'] else loop['entry']
   print('Outgoing edge: ', source, '-->', target)
 
-  # find the branch
   br = blocks[source][-1]
   assert(br['op'] == 'br')
-  # locate the instruction that computes the condition, together with the block containing it
-  cond_inst, cond_inst_block = find_cond_inst(blocks, 
-                                              loop['nodes'], 
-                                              source, 
-                                              br, 
-                                              in_rd[source])
+  cond_inst, cond_inst_bb = find_cond_inst(blocks, 
+                                           loop['nodes'], 
+                                           source, 
+                                           br, 
+                                           in_rd[source])
+
   if not cond_inst:
+    print('Can not find conditional instruction... ')
     return None
-  print('Condition inst: ', cond_inst, ' in block ', cond_inst_block)
+  print('Condition inst: ', cond_inst, ' in block ', cond_inst_bb)
 
-  # get the loop bound
-  cp_res = in_cp[cond_inst_block]
-  bounds = [None, None]
-  for i in range(2):
-    arg = cond_inst['args'][i]
-    if arg in cp_res:
-      if cp_res[arg] != '?':
-        bounds[i] = int(cp_res[arg])
-
-  # if both are non-constant, give up
-  if (bounds[0] is None) and (bounds[1] is None):
+  # get the induction variable and loop bound
+  indvar, bound = get_indvar_and_bound(cond_inst, in_cp[cond_inst_bb])
+  if not indvar:
+    print('Can not find induction variable...')
     return None
-  # if one of them is constant, then that's the bound
-  elif bounds[0] is None:
-    bound = bounds[1]
-    indvar = cond_inst['args'][0]
-    negate_op = False
-  elif bounds[1] is None:
-    bound = bounds[0]
-    indvar = cond_inst['args'][1]
-    negate_op = True
-  # if both are constant, tripcount can be computed directly
-  else:
-    return handle_trivial_case(bounds, cond_inst['op'], source == entry)
+  if not bound:
+    print('Can not determine loop bound...')
+    return None
   print('Induction variable is: ', indvar, ', bound is: ', bound)
-  # now we have the loop induction variable, find its initial value
-  # initial value is the possible value of this variable when entering the loop
-  # thus we check all outgoing sets of constant propagation that comes into the loop entry
+
+  # find the initial value of induction variable
   init_val = get_init_val(loop['nodes'], preds[loop['entry']], out_cp, indvar)
   if init_val is None:
+    print('Can not determine initial value of induction variable... ')
     return None
+  print('Initial value of induction variable is: ', init_val)
 
   # find instructions that update the induction variable
-  indvar_updates = []
-  update_block = None
-  for b in loop['nodes']:
-    for inst in blocks[b]:
-      if 'dest' in inst:
-        if inst['dest'] == indvar:
-          indvar_updates.append(inst)
-          update_block = b
-    
-  # give up if there is more than one
-  if len(indvar_updates) != 1:
-    return None
-  
-  indvar_update_inst = indvar_updates[0]
-  print('Induction update instruction is: ', indvar_update_inst)
-
-  # if the instruction is not as we expected, give up
-  if not check_inst(indvar_update_inst):
-    return None
-
-  # get the step size
-  step = None
-  for var in indvar_update_inst['args']:
-    if var != indvar:
-      cp_res = in_cp[update_block]
-      if var in cp_res:
-        if cp_res[var] != '?':
-          step = cp_res[var]
-          break
-
+  step = get_step_size(loop['nodes'], blocks, in_cp, indvar)
   # if we can not retrieve the step size, give up
   if step is None:
+    print('Can not determine step size... ')
     return None
+  print('Step size is ', step)
 
-  # we can finally compute the tripcount... 
-  if indvar_update_inst['op'] == 'sub':
-    step = -step
-
-  tripcount = compute_tripcount(cond_inst['op'], init_val, bound, step, negate_op)
+  tripcount = compute_tripcount(init_val, bound, step)
   return tripcount
+
+
+###################################################################################################
+#                           Functions used to actually unroll loops                               #
+###################################################################################################
 
 # simple condition to check if we unroll the loop or not
 def check_unroll(loop, blocks, tripcount):
@@ -378,37 +369,44 @@ def unroll(blocks, preds, succs, loop, tripcount):
   if not check_unroll(loop, blocks, tripcount):
     return blocks
 
-  print('Original blocks: ', blocks)
   # add all basic blocks that are not in the loop
   other_blocks = []
-  for b in blocks:
-    if not b in loop['nodes']:
-      other_blocks.append(b)
+  for bb in blocks:
+    if not bb in loop['nodes']:
+      other_blocks.append(bb)
 
   new_blocks = OrderedDict()
-  for b in other_blocks:
-    new_blocks[b] = copy.deepcopy(blocks[b])
-  print('New blocks: ', new_blocks.keys())
-  
-  # change the targets of other blocks that might jump to our loop
-  # the only possible case here is that the block will jump to the entry of the loop
+  for bb in other_blocks:
+    new_blocks[bb] = copy.deepcopy(blocks[bb])
+ 
+  name_str = '{0}_{1}_{2}'
   entry = loop['entry']
   exit = loop['exit']
-  for block_name, b in new_blocks.items():
+  exit_from_exit = loop['exit_from_exit']
+
+  # change the targets of other blocks that might jump to our loop
+  # the only possible case here is that the block will jump to the entry of the loop
+  for block_name, bb in new_blocks.items():
+    # clean up the block names, if we want to do it more rigorously we should use re
     if '_' in block_name:
       raw_block_name = (block_name.rsplit('_', 1))[1]
     else:
       raw_block_name = block_name
-    succ = succs[raw_block_name]
-    if entry in succ:
-      term_inst = b[-1]
+    succ_list = succs[raw_block_name]
+    if entry in succ_list:
+      term_inst = bb[-1]
       if term_inst['op'] == 'jmp':
-        term_inst['args'][0] = loop['name'] + '_0_' + blocks[entry][0]['label']
+        term_inst['args'][0] = name_str.format(loop['name'], 0, entry)
+      elif term_inst['op'] == 'br':
+        for i in range(1, len(term_inst['args'])):
+          if term_inst['args'][i] == entry:
+            term_inst['args'][i] = name_str.format(loop['name'], 0, entry)
   
+  loop_blocks = OrderedDict()
   # start to duplicate the blocks in the loop
   for i in range(tripcount):
-    for b in loop['nodes']:
-      new_block = copy.deepcopy(blocks[b])
+    for bb in loop['nodes']:
+      new_block = copy.deepcopy(blocks[bb])
       label = new_block[0]['label']
       new_label = loop['name'] + '_' + str(i) + '_' + label
       new_block[0]['label'] = new_label
@@ -419,24 +417,31 @@ def unroll(blocks, preds, succs, loop, tripcount):
       if term_inst['op'] == 'jmp':
         target = term_inst['args'][0]
         if target == entry:
-          term_inst['args'][0] = loop['name'] + '_' + str(i+1) + '_' + entry
+          term_inst['args'][0] = name_str.format(loop['name'], i+1, entry)
         elif target in loop['nodes']:
-          term_inst['args'][0] = loop['name'] + '_' + str(i) + '_' + target
+          term_inst['args'][0] = name_str.format(loop['name'], i, target)
       elif term_inst['op'] == 'br':
-        print(term_inst)
+        targets = term_inst['args'][1:]
+        in_loop = [t in loop['nodes'] for t in targets]
+        # two possible conditions: the first target is in the loop and second one is not
+        if in_loop[0] and not in_loop[1]:
+          term_inst['op'] = 'jmp'
+          if targets[0] == entry:
+            term_inst['args'] = [name_str.format(loop['name'], i+1, entry)]
+          else:
+            term_inst['args'] = [name_str.format(loop['name'], i, targets[0])]
+        # or both are in loop
+      else:
         for j in range(1, len(term_inst['args'])):
           target = term_inst['args'][j]
-          if target == entry:
-            term_inst['args'][j] = loop['name'] + '_' + str(i+1) + '_' + entry
-          elif target in loop['nodes']:
-            term_inst['args'][j] = loop['name'] + '_' + str(i) + '_' + target
-      new_blocks[new_label] = new_block
+          term_inst['args'][j] = name_str.format(loop['name'], i, target)
+
+      loop_blocks[new_label] = new_block
 
   # need to add an extra entry block if the loop exits from the entry
   if not loop['exit_from_exit']:
     new_block = copy.deepcopy(blocks[entry])
-    label = new_block[0]['label']
-    new_label = loop['name'] + '_' + str(tripcount) + '_' + label
+    new_label = name_str.format(loop['name'], tripcount, entry)
     new_block[0]['label'] = new_label
     # replace the branch in the entry node with a jump
     br = new_block[-1]
@@ -444,20 +449,52 @@ def unroll(blocks, preds, succs, loop, tripcount):
       br['op'] = 'jmp'
       # assume we jump back to the loop if the condition is true
       br['args'] = [br['args'][2]]
-    new_blocks[new_label] = new_block
+    loop_blocks[new_label] = new_block
+  # otherwise, we need to replace the branch in the last exit block to a jump
+  else:
+    last_exit_block_name = name_str.format(loop['name'], tripcount-1, exit)
+    bb = loop_blocks[last_exit_block_name]
+    br = bb[-1]
+    assert(br['op'] == 'br')
+    bb[-1]['op'] = 'jmp'
+    bb[-1]['args'] = [br['args'][2]]
 
-  return new_blocks
+  # (conceptually) merge the basic blocks
+  # what we need to do is to remove all the labels of the entry and exit blocks, and all the jumps 
+  # at the end of the entry blocks and exit blocks
+  for i in range(tripcount+1):
+    exit_block_name = name_str.format(loop['name'], i, exit)
+    if exit_block_name in loop_blocks:
+      # remove the label
+      del loop_blocks[exit_block_name][0]
+      # remove the jump at the end
+      if (not loop['exit_from_exit']) or (i < tripcount - 1):
+        del loop_blocks[exit_block_name][-1]
+    entry_block_name = name_str.format(loop['name'], i, entry)
+    if entry_block_name in loop_blocks:
+      # remove the label
+      if i > 0:
+        del loop_blocks[entry_block_name][0]
+      # remove the jump at the end
+      if (loop_blocks[entry_block_name][-1]['op'] == 'jmp') and (i < tripcount):
+        del loop_blocks[entry_block_name][-1]
 
+  return {**new_blocks, **loop_blocks}
+
+ 
 # top-level function for loop unrolling
 def unroll_loops(bril):
 
   # this pass operates on each function
   for func in bril['functions']:
+
     print('Unrolling loops in function ' + func['name'] + '... ')
+
     # use utilities to form basic blocks
     blocks = cfg.block_map(form_blocks(func['instrs']))
     cfg.add_terminators(blocks)
     entry_block = list(blocks.keys())[0]
+    
     # get all predecessors, successors of the basic blocks
     preds, succs = cfg.edges(blocks)
     print('Preds: ', preds)
@@ -467,26 +504,16 @@ def unroll_loops(bril):
     dom = get_dom(succs, entry_block)
     print('Dom: ', dom)
     
+    # run constant propagation, try to determine the loop bound and step
+    in_consts, out_consts = df_worklist(blocks, ANALYSES['cprop'])
+    # run reaching definition to help us find the induction variable
+    in_rd, out_rd = df_worklist(blocks, ANALYSES['rd'])
+    print('Done with dataflow analysis: constant propagation and reaching definition. ')
+
     # now we can find loops
     loops = find_loops(entry_block, preds, succs, dom)
     print('All loops: ')
     print(loops)
-    
-    # don't unroll loops with subloops, remove them from the dictionary
-    interesting_loops = filter_inner_most_loops(loops)
-    print('Interesting loops: ')
-    print(interesting_loops)
-   
-    # run constant propagation, try to determine the loop bound and step
-    in_consts, out_consts = df_worklist(blocks, ANALYSES['cprop'])
-    print('Constant propagation results: ')
-    print(in_consts)
-    print(out_consts)
-    # run reaching definition to help us find the induction variable
-    in_rd, out_rd = df_worklist(blocks, ANALYSES['rd'])
-    print('Reaching definition results: ')
-    print(in_rd)
-    print(out_rd)
 
     # go through all interesting loops
     for _, l in loops.items():

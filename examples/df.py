@@ -130,22 +130,30 @@ def cprop_transfer(block, in_vals, name):
             elif instr['op'] == 'id':
                 if instr['args'][0] in out_vals:
                     if out_vals[instr['args'][0]] != '?':
-                        out_vals[instr['dest']] = instr['value']
+                        out_vals[instr['dest']] = out_vals[instr['args'][0]] 
+                    else:
+                        out_vals[instr['dest']] = '?'
             elif instr['op'] == 'add':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
                     if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
                         val = out_vals[instr['args'][0]] + out_vals[instr['args'][1]]
                         out_vals[instr['dest']] = val
+                    else:
+                        out_vals[instr['dest']] = '?'
             elif instr['op'] == 'sub':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
                     if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
                         val = out_vals[instr['args'][0]] - out_vals[instr['args'][1]]
                         out_vals[instr['dest']] = val
+                    else:
+                        out_vals[instr['dest']] = '?'
             elif instr['op'] == 'mul':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
                     if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
                         val = out_vals[instr['args'][0]] * out_vals[instr['args'][1]]
                         out_vals[instr['dest']] = val
+                    else:
+                        out_vals[instr['dest']] = '?'
             else:
                 out_vals[instr['dest']] = '?'
     return out_vals
