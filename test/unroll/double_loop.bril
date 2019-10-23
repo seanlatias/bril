@@ -1,14 +1,12 @@
 main {
   v0: int[16] = new int[16];
-  v4: int = const 0;
-  i: int = id v4;
+  i: int = const 0;
 for.cond.3:
   v6: int = const 4;
   v7: bool = lt i v6;
   br v7 for.body.3 for.end.3;
 for.body.3:
-  v9: int = const 0;
-  j: int = id v9;
+  j: int = const 0;
 for.cond.8:
   v11: int = const 4;
   v12: bool = lt j v11;

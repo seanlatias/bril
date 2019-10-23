@@ -1,8 +1,6 @@
 main {
-  v0: int = const 0;
-  sum: int = id v0;
-  v2: int = const 0;
-  i: int = id v2;
+  sum: int = const 0;
+  i: int = const 0;
 for.cond.1:
   v4: int = const 10;
   v5: bool = lt i v4;
@@ -13,8 +11,7 @@ for.body.1:
   i: int = add i v10;
   jmp for.cond.1;
 for.end.1:
-  v13: int = const 0;
-  j: int = id v13;
+  j: int = const 0;
 for.cond.12:
   v15: int = const 10;
   v16: bool = lt j v15;

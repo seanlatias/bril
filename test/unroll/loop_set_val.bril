@@ -1,7 +1,6 @@
 main {
   v0: int[5] = new int[5];
-  v12: int = const 0;
-  i: int = id v12;
+  i: int = const 0;
 for.cond.11:
   v14: int = const 5;
   v15: bool = lt i v14;

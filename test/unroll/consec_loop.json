@@ -3,32 +3,16 @@
     {
       "instrs": [
         {
-          "dest": "v0",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0"
-          ],
           "dest": "sum",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "dest": "v2",
           "op": "const",
           "type": "int",
           "value": 0
         },
         {
-          "args": [
-            "v2"
-          ],
           "dest": "i",
-          "op": "id",
-          "type": "int"
+          "op": "const",
+          "type": "int",
+          "value": 0
         },
         {
           "label": "for.cond.1"
@@ -93,18 +77,10 @@
           "label": "for.end.1"
         },
         {
-          "dest": "v13",
+          "dest": "j",
           "op": "const",
           "type": "int",
           "value": 0
-        },
-        {
-          "args": [
-            "v13"
-          ],
-          "dest": "j",
-          "op": "id",
-          "type": "int"
         },
         {
           "label": "for.cond.12"

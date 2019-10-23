@@ -15,18 +15,10 @@
           }
         },
         {
-          "dest": "v4",
+          "dest": "i",
           "op": "const",
           "type": "int",
           "value": 0
-        },
-        {
-          "args": [
-            "v4"
-          ],
-          "dest": "i",
-          "op": "id",
-          "type": "int"
         },
         {
           "label": "for.cond.3"
@@ -58,18 +50,10 @@
           "label": "for.body.3"
         },
         {
-          "dest": "v9",
+          "dest": "j",
           "op": "const",
           "type": "int",
           "value": 0
-        },
-        {
-          "args": [
-            "v9"
-          ],
-          "dest": "j",
-          "op": "id",
-          "type": "int"
         },
         {
           "label": "for.cond.8"
