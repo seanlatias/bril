@@ -4,37 +4,26 @@ main {
   v2: int = const 0;
   i: int = id v2;
 for.cond.1:
-  v3: int = id i;
   v4: int = const 10;
-  v5: bool = lt v3 v4;
+  v5: bool = lt i v4;
   br v5 for.body.1 for.end.1;
 for.body.1:
-  v6: int = id sum;
-  v7: int = id i;
-  v8: int = add v6 v7;
-  sum: int = id v8;
-  v9: int = id i;
+  sum: int = add sum i;
   v10: int = const 1;
-  v11: int = add v9 v10;
-  i: int = id v11;
+  i: int = add i v10;
   jmp for.cond.1;
 for.end.1:
   v13: int = const 0;
   j: int = id v13;
 for.cond.12:
-  v14: int = id j;
   v15: int = const 10;
-  v16: bool = lt v14 v15;
+  v16: bool = lt j v15;
   br v16 for.body.12 for.end.12;
 for.body.12:
-  v17: int = id sum;
-  v18: int = id j;
-  v19: int = sub v17 v18;
-  sum: int = id v19;
-  v20: int = id j;
+  sum: int = sub sum j;
   v21: int = const 1;
-  v22: int = add v20 v21;
-  j: int = id v22;
+  j: int = add j v21;
   jmp for.cond.12;
 for.end.12:
+  ret;
 }
