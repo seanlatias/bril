@@ -20,7 +20,7 @@ def block_map(blocks):
             # The block has a label. Remove the label but use it for the
             # block's name.
             name = block[0]['label']
-            block = block[1:]
+            #block = block[1:]
         else:
             # Make up a new name for this anonymous block.
             name = fresh('b', by_name)
