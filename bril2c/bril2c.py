@@ -39,10 +39,10 @@ def br(instr):
     return"""if({})
     goto {};
 else
-    goto {};""".format(instr["args"][0], instr["args"][1], instr["args"][2])
+    goto {};""".format(instr["args"][0], instr["args"][1].replace(".", "_"), instr["args"][2].replace(".", "_"))
 
 def jmp(instr):
-    return "goto {};".format(instr["args"][0])
+    return "goto {};".format(instr["args"][0].replace(".", "_"))
 
 def bid(instr):
     if instr["dest"] not in variables:
@@ -131,11 +131,11 @@ opcode = {
 }
 
 def label(instr):
-    return "{}:;".format(instr["label"])
+    str = instr["label"].replace(".", "_")
+    return "{}:;".format(str)
 
 body = []
 for i in instrs:
-    print(i)
     if "op" in i:
         code = opcode[i["op"]](i)
     elif "label" in i:
