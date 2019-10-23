@@ -1,0 +1,23 @@
+{
+  "functions": [
+    {
+      "instrs": [
+        {
+          "dest": "v0",
+          "op": "const",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "args": [
+            "v0"
+          ],
+          "dest": "v1",
+          "op": "id",
+          "type": "int"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

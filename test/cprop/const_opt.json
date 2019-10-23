@@ -1,0 +1,1 @@
+{"functions": [{"instrs": [{"label": "b1"}, {"dest": "v0", "op": "const", "type": "int", "value": 0}, {"op": "const", "value": 0, "type": "int", "dest": "v1"}, {"op": "ret", "args": []}], "name": "main"}]}

@@ -1,0 +1,4 @@
+main {
+  v0: int = const 0;
+  v1: int = id v0;
+}

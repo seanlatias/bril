@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from form_blocks import form_blocks
 import cfg
-from util import var_args
+from util import var_args, flatten
 
 # A single dataflow analysis consists of these part:
 # - forward: True for forward, False for backward.
@@ -81,17 +81,23 @@ def fmt(val):
 
 
 def run_df(bril, analysis):
-    for func in bril['functions']:
-        # Form the CFG.
-        blocks = cfg.block_map(form_blocks(func['instrs']))
-        cfg.add_terminators(blocks)
+    func = bril['functions'][0]
+    # Form the CFG.
+    blocks = cfg.block_map(form_blocks(func['instrs']))
+    cfg.add_terminators(blocks)
 
-        in_, out = df_worklist(blocks, analysis)
-        # for block in blocks:
-        #    print('{}:'.format(block))
-        #    print('  in: ', fmt(in_[block]))
-        #    print('  out:', fmt(out[block]))
-        return in_, out
+    in_, out = df_worklist(blocks, analysis)
+    new_instrs = []
+    for key, value in blocks.items():
+        new_instrs += value
+    func['instrs'] = new_instrs
+    bril['functions'][0] = func
+    print(json.dumps(bril))
+    # for block in blocks:
+    #    print('{}:'.format(block))
+    #    print('  in: ', fmt(in_[block]))
+    #    print('  out:', fmt(out[block]))
+    return in_, out
 
 
 def gen(block):
@@ -113,10 +119,51 @@ def use(block):
 
 def cprop_transfer(block, in_vals, name):
     out_vals = dict(in_vals)
-    for instr in block:
+    for i in range(0, len(block)):
+        instr = block[i]
         if 'dest' in instr:
             if instr['op'] == 'const':
                 out_vals[instr['dest']] = instr['value']
+            elif instr['op'] == 'id':
+                if instr['args'][0] in out_vals:
+                    if out_vals[instr['args'][0]] != '?':
+                        instr = {'op': 'const',
+                                 'value': out_vals[instr['args'][0]],
+                                 'type': instr['type'],
+                                 'dest': instr['dest']
+                                 }
+                        block[i] = instr
+                        out_vals[instr['dest']] = instr['value']
+            elif instr['op'] == 'add':
+                if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
+                    val = out_vals[instr['args'][0]] + out_vals[instr['args'][1]]
+                    instr = {'op': 'const',
+                             'value': val,
+                             'type': instr['type'],
+                             'dest': instr['dest']
+                             }
+                    block[i] = instr
+                    out_vals[instr['dest']] = instr['value']
+            elif instr['op'] == 'sub':
+                if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
+                    val = out_vals[instr['args'][0]] - out_vals[instr['args'][1]]
+                    instr = {'op': 'const',
+                             'value': val,
+                             'type': instr['type'],
+                             'dest': instr['dest']
+                             }
+                    block[i] = instr
+                    out_vals[instr['dest']] = instr['value']
+            elif instr['op'] == 'mul':
+                if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
+                    val = out_vals[instr['args'][0]] * out_vals[instr['args'][1]]
+                    instr = {'op': 'const',
+                             'value': val,
+                             'type': instr['type'],
+                             'dest': instr['dest']
+                             }
+                    block[i] = instr
+                    out_vals[instr['dest']] = instr['value']
             else:
                 out_vals[instr['dest']] = '?'
     return out_vals
@@ -149,7 +196,7 @@ def rd_transfer(block, in_vals, name):
 
   for v in gens:
     out_vals.add((v, name))
-  
+
   return out_vals
 
 
@@ -185,7 +232,7 @@ ANALYSES = {
       True,
       init = set(),
       merge = union,
-      transfer = rd_transfer, 
+      transfer = rd_transfer,
     ),
 }
 
