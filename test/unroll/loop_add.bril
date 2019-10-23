@@ -1,0 +1,17 @@
+main {
+  sum: int = const 0;
+  i: int = const 0;
+for.cond.1:
+  v4: int = const 5;
+  v5: bool = lt i v4;
+  br v5 for.body.1 for.end.1;
+for.body.1:
+  sum: int = add sum i;
+  v10: int = const 1;
+  v11: int = add i v10;
+  i: int = id v11;
+  jmp for.cond.1;
+for.end.1:
+  v12: int = id sum;
+  print v12;
+}

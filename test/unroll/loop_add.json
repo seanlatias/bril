@@ -1,167 +1,105 @@
 {
   "functions": [
     {
-      "name": "main",
       "instrs": [
         {
-          "op": "const",
-          "value": 0,
-          "dest": "v0",
-          "type": "int"
-        },
-        {
-          "op": "id",
-          "args": [
-            "v0"
-          ],
           "dest": "sum",
-          "type": "int"
-        },
-        {
           "op": "const",
-          "value": 0,
-          "dest": "v2",
-          "type": "int"
+          "type": "int",
+          "value": 0
         },
         {
-          "op": "id",
-          "args": [
-            "v2"
-          ],
           "dest": "i",
-          "type": "int"
+          "op": "const",
+          "type": "int",
+          "value": 0
         },
         {
           "label": "for.cond.1"
         },
         {
-          "op": "id",
-          "args": [
-            "i"
-          ],
-          "dest": "v3",
-          "type": "int"
-        },
-        {
-          "op": "const",
-          "value": 5,
           "dest": "v4",
-          "type": "int"
+          "op": "const",
+          "type": "int",
+          "value": 5
         },
         {
-          "op": "lt",
           "args": [
-            "v3",
+            "i",
             "v4"
           ],
           "dest": "v5",
+          "op": "lt",
           "type": "bool"
         },
         {
-          "op": "br",
           "args": [
             "v5",
             "for.body.1",
             "for.end.1"
-          ]
+          ],
+          "op": "br"
         },
         {
           "label": "for.body.1"
         },
         {
-          "op": "id",
           "args": [
-            "sum"
-          ],
-          "dest": "v6",
-          "type": "int"
-        },
-        {
-          "op": "id",
-          "args": [
+            "sum",
             "i"
-          ],
-          "dest": "v7",
-          "type": "int"
-        },
-        {
-          "op": "add",
-          "args": [
-            "v6",
-            "v7"
-          ],
-          "dest": "v8",
-          "type": "int"
-        },
-        {
-          "op": "id",
-          "args": [
-            "v8"
           ],
           "dest": "sum",
-          "type": "int"
-        },
-        {
-          "op": "id",
-          "args": [
-            "i"
-          ],
-          "dest": "v9",
-          "type": "int"
-        },
-        {
-          "op": "const",
-          "value": 1,
-          "dest": "v10",
-          "type": "int"
-        },
-        {
           "op": "add",
+          "type": "int"
+        },
+        {
+          "dest": "v10",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
           "args": [
-            "v9",
+            "i",
             "v10"
           ],
           "dest": "v11",
+          "op": "add",
           "type": "int"
         },
         {
-          "op": "id",
           "args": [
             "v11"
           ],
           "dest": "i",
+          "op": "id",
           "type": "int"
         },
         {
-          "op": "jmp",
           "args": [
             "for.cond.1"
-          ]
+          ],
+          "op": "jmp"
         },
         {
           "label": "for.end.1"
         },
         {
-          "op": "id",
           "args": [
             "sum"
           ],
           "dest": "v12",
+          "op": "id",
           "type": "int"
         },
         {
-          "op": "print",
           "args": [
             "v12"
-          ]
-        },
-        {
-          "op": "const",
-          "value": 0,
-          "dest": "v13",
-          "type": "int"
+          ],
+          "op": "print"
         }
-      ]
+      ],
+      "name": "main"
     }
   ]
 }
