@@ -11,7 +11,7 @@ from util import var_args, flatten
 # - init: An initial value (bottom or top of the latice).
 # - merge: Take a list of values and produce a single value.
 # - transfer: The transfer function.
-Analysis = namedtuple('Analysis', ['forward', 'init', 'merge', 'transfer'])
+Analysis = namedtuple('Analysis', ['forward', 'init', 'merge', 'transfer', 'postproc'])
 
 
 def union(sets):
@@ -54,6 +54,9 @@ def df_worklist(blocks, analysis):
         if outval != out[node]:
             out[node] = outval
             worklist += out_edges[node]
+
+    if analysis.postproc is not None:
+        analysis.postproc(blocks, out)
 
     if analysis.forward:
         return in_, out
@@ -127,43 +130,22 @@ def cprop_transfer(block, in_vals, name):
             elif instr['op'] == 'id':
                 if instr['args'][0] in out_vals:
                     if out_vals[instr['args'][0]] != '?':
-                        instr = {'op': 'const',
-                                 'value': out_vals[instr['args'][0]],
-                                 'type': instr['type'],
-                                 'dest': instr['dest']
-                                 }
-                        block[i] = instr
                         out_vals[instr['dest']] = instr['value']
             elif instr['op'] == 'add':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
-                    val = out_vals[instr['args'][0]] + out_vals[instr['args'][1]]
-                    instr = {'op': 'const',
-                             'value': val,
-                             'type': instr['type'],
-                             'dest': instr['dest']
-                             }
-                    block[i] = instr
-                    out_vals[instr['dest']] = instr['value']
+                    if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
+                        val = out_vals[instr['args'][0]] + out_vals[instr['args'][1]]
+                        out_vals[instr['dest']] = val
             elif instr['op'] == 'sub':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
-                    val = out_vals[instr['args'][0]] - out_vals[instr['args'][1]]
-                    instr = {'op': 'const',
-                             'value': val,
-                             'type': instr['type'],
-                             'dest': instr['dest']
-                             }
-                    block[i] = instr
-                    out_vals[instr['dest']] = instr['value']
+                    if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
+                        val = out_vals[instr['args'][0]] - out_vals[instr['args'][1]]
+                        out_vals[instr['dest']] = val
             elif instr['op'] == 'mul':
                 if instr['args'][0] in out_vals and instr['args'][1] in out_vals:
-                    val = out_vals[instr['args'][0]] * out_vals[instr['args'][1]]
-                    instr = {'op': 'const',
-                             'value': val,
-                             'type': instr['type'],
-                             'dest': instr['dest']
-                             }
-                    block[i] = instr
-                    out_vals[instr['dest']] = instr['value']
+                    if out_vals[instr['args'][0]] != '?' and out_vals[instr['args'][1]] != '?':
+                        val = out_vals[instr['args'][0]] * out_vals[instr['args'][1]]
+                        out_vals[instr['dest']] = val
             else:
                 out_vals[instr['dest']] = '?'
     return out_vals
@@ -182,6 +164,21 @@ def cprop_merge(vals_list):
                 else:
                     out_vals[name] = val
     return out_vals
+
+def cprop_post(blocks, vals_list):
+    for key, block in blocks.items():
+        vals = vals_list[key]
+        for i in range(0, len(block)):
+            instr = block[i]
+            if 'dest' in instr:
+                if instr['dest'] in vals:
+                    if vals[instr['dest']] != '?':
+                        instr = {'op': 'const',
+                                 'type': instr['type'],
+                                 'value': vals[instr['dest']],
+                                 'dest': instr['dest']
+                                }
+                        block[i] = instr
 
 def rd_transfer(block, in_vals, name):
   gens = gen(block)
@@ -208,6 +205,7 @@ ANALYSES = {
         init=set(),
         merge=union,
         transfer=lambda block, in_, name: in_.union(gen(block)),
+        postproc=None
     ),
 
     # Live variable analysis: the variables that are both defined at a
@@ -217,6 +215,7 @@ ANALYSES = {
         init=set(),
         merge=union,
         transfer=lambda block, out, name: use(block).union(out - gen(block)),
+        postproc=None
     ),
 
     # A simple constant propagation pass.
@@ -225,14 +224,16 @@ ANALYSES = {
         init={},
         merge=cprop_merge,
         transfer=cprop_transfer,
+        postproc=cprop_post
     ),
 
     # reaching definitions
     'rd': Analysis(
-      True,
-      init = set(),
-      merge = union,
-      transfer = rd_transfer,
+        True,
+        init = set(),
+        merge = union,
+        transfer = rd_transfer,
+        postproc=None
     ),
 }
 

@@ -1,0 +1,33 @@
+{
+  "functions": [
+    {
+      "instrs": [
+        {
+          "dest": "v0",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "label": "head"
+        },
+        {
+          "args": [
+            "v0",
+            "v0"
+          ],
+          "dest": "v0",
+          "op": "add",
+          "type": "int"
+        },
+        {
+          "args": [
+            "head"
+          ],
+          "op": "jmp"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+main {
+  v0: int = const 1;
+head:
+  v0: int = add v0 v0;
+  jmp head;
+}
