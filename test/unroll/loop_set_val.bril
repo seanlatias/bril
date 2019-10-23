@@ -1,40 +1,18 @@
 main {
   v0: int[5] = new int[5];
-  v1: int = const 0;
-  v2: int = const 0;
-  set v0 v1 v2;
-  v3: int = const 1;
-  v4: int = const 0;
-  set v0 v3 v4;
-  v5: int = const 2;
-  v6: int = const 0;
-  set v0 v5 v6;
-  v7: int = const 3;
-  v8: int = const 0;
-  set v0 v7 v8;
-  v9: int = const 4;
-  v10: int = const 0;
-  set v0 v9 v10;
   v12: int = const 0;
   i: int = id v12;
 for.cond.11:
-  v13: int = id i;
   v14: int = const 5;
-  v15: bool = lt v13 v14;
+  v15: bool = lt i v14;
   br v15 for.body.11 for.end.11;
 for.body.11:
-  v16: int = id i;
-  v17: int = id i;
-  set v0 v17 v16;
-  v19: int = const 0;
-  v20: int = id i;
+  set v0 i i;
   v21: int = const 1;
-  v22: int = add v20 v21;
-  i: int = id v22;
+  i: int = add i v21;
   jmp for.cond.11;
 for.end.11:
   v23: int = const 0;
   v25: int = index v0 v23;
   print v25;
-  v26: int = const 0;
 }

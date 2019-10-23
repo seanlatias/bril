@@ -15,106 +15,6 @@
           }
         },
         {
-          "dest": "v1",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "dest": "v2",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0",
-            "v1",
-            "v2"
-          ],
-          "op": "set"
-        },
-        {
-          "dest": "v3",
-          "op": "const",
-          "type": "int",
-          "value": 1
-        },
-        {
-          "dest": "v4",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0",
-            "v3",
-            "v4"
-          ],
-          "op": "set"
-        },
-        {
-          "dest": "v5",
-          "op": "const",
-          "type": "int",
-          "value": 2
-        },
-        {
-          "dest": "v6",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0",
-            "v5",
-            "v6"
-          ],
-          "op": "set"
-        },
-        {
-          "dest": "v7",
-          "op": "const",
-          "type": "int",
-          "value": 3
-        },
-        {
-          "dest": "v8",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0",
-            "v7",
-            "v8"
-          ],
-          "op": "set"
-        },
-        {
-          "dest": "v9",
-          "op": "const",
-          "type": "int",
-          "value": 4
-        },
-        {
-          "dest": "v10",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "v0",
-            "v9",
-            "v10"
-          ],
-          "op": "set"
-        },
-        {
           "dest": "v12",
           "op": "const",
           "type": "int",
@@ -132,14 +32,6 @@
           "label": "for.cond.11"
         },
         {
-          "args": [
-            "i"
-          ],
-          "dest": "v13",
-          "op": "id",
-          "type": "int"
-        },
-        {
           "dest": "v14",
           "op": "const",
           "type": "int",
@@ -147,7 +39,7 @@
         },
         {
           "args": [
-            "v13",
+            "i",
             "v14"
           ],
           "dest": "v15",
@@ -167,41 +59,11 @@
         },
         {
           "args": [
-            "i"
-          ],
-          "dest": "v16",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
-            "i"
-          ],
-          "dest": "v17",
-          "op": "id",
-          "type": "int"
-        },
-        {
-          "args": [
             "v0",
-            "v17",
-            "v16"
+            "i",
+            "i"
           ],
           "op": "set"
-        },
-        {
-          "dest": "v19",
-          "op": "const",
-          "type": "int",
-          "value": 0
-        },
-        {
-          "args": [
-            "i"
-          ],
-          "dest": "v20",
-          "op": "id",
-          "type": "int"
         },
         {
           "dest": "v21",
@@ -211,19 +73,11 @@
         },
         {
           "args": [
-            "v20",
+            "i",
             "v21"
           ],
-          "dest": "v22",
-          "op": "add",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v22"
-          ],
           "dest": "i",
-          "op": "id",
+          "op": "add",
           "type": "int"
         },
         {
@@ -255,12 +109,6 @@
             "v25"
           ],
           "op": "print"
-        },
-        {
-          "dest": "v26",
-          "op": "const",
-          "type": "int",
-          "value": 0
         }
       ],
       "name": "main"
