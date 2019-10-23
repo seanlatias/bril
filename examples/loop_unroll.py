@@ -95,7 +95,9 @@ def filter_inner_most_loops(loops):
   for name1, loop1 in loops.items():
     for name2, loop2 in loops.items():
       if not name1 == name2:
-        if loop1['nodes'].issuperset(loop2['nodes']):
+        set1 = set(loop1['nodes'])
+        set2 = set(loop2['nodes'])
+        if set1.issuperset(set2):
           remove_list.append(loop1)
           break
 
