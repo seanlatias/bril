@@ -8,8 +8,7 @@ for.cond.1:
 for.body.1:
   sum: int = add sum i;
   v10: int = const 1;
-  v11: int = add i v10;
-  i: int = id v11;
+  i: int = add i v10;
   jmp for.cond.1;
 for.end.1:
   v12: int = id sum;

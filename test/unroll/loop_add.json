@@ -63,16 +63,8 @@
             "i",
             "v10"
           ],
-          "dest": "v11",
-          "op": "add",
-          "type": "int"
-        },
-        {
-          "args": [
-            "v11"
-          ],
           "dest": "i",
-          "op": "id",
+          "op": "add",
           "type": "int"
         },
         {
